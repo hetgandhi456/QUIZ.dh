@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Fun</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #111827 100%); /* blue-800 to gray-900 */
+            color: #f1f5f9; /* slate-100 */
+        }
+        .card {
+            background-color: rgba(30, 41, 59, 0.5); /* slate-800 with opacity */
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .btn {
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .quiz-option {
+            transition: all 0.2s ease-in-out;
+            border-width: 2px;
+            position: relative;
+        }
+        .quiz-option.selected {
+            border-color: #60a5fa; /* blue-400 */
+            background-color: rgba(96, 165, 250, 0.2); 
+        }
+        .quiz-option.correct {
+            border-color: #4ade80 !important;
+            background-color: rgba(74, 222, 128, 0.2) !important;
+            color: #f0fdf4 !important;
+        }
+        .quiz-option.incorrect {
+            border-color: #f87171 !important;
+            background-color: rgba(248, 113, 113, 0.2) !important;
+            color: #fef2f2 !important;
+        }
+        .quiz-option.disabled {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .feedback-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.25rem;
+        }
+        .timer-bar {
+            height: 5px;
+            background-color: #60a5fa;
+            width: 100%;
+            transition: width 0.5s linear;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="container w-full max-w-2xl mx-auto">
+
+        <!-- Welcome Page -->
+        <div id="welcome-page" class="page active card text-center p-8 md:p-12 rounded-2xl shadow-2xl">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4">Welcome to the Quiz Fun!</h1>
+            <p class="text-lg text-slate-300 mb-8">Challenge your knowledge and have fun.</p>
+            <form id="name-form" class="flex flex-col sm:flex-row gap-4 max-w-sm mx-auto">
+                <input type="text" id="name-input" placeholder="Enter your name" class="flex-grow bg-slate-700 rounded-md p-3 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg text-center sm:text-left" required>
+                <button type="submit" class="btn bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-xl hover:bg-blue-600">
+                    Next
+                </button>
+            </form>
+        </div>
+        
+        <!-- Category Page -->
+        <div id="category-page" class="page card text-center p-8 md:p-12 rounded-2xl shadow-2xl">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-6">Choose a Category</h1>
+            <div id="category-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <!-- Categories will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Quiz Page -->
+        <div id="quiz-page" class="page card p-8 md:p-10 rounded-2xl shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="question-number" class="text-xl font-semibold text-blue-300"></h2>
+                <div id="timer" class="flex items-center font-bold text-lg">
+                    <i class="fa-solid fa-clock mr-2"></i>
+                    <span id="timer-text">15</span>
+                </div>
+            </div>
+            <div class="w-full bg-slate-700 rounded-full mb-4">
+                <div id="timer-bar" class="timer-bar rounded-full"></div>
+            </div>
+            <p id="question-text" class="text-2xl font-bold text-white mb-6"></p>
+            <div id="options-container" class="space-y-4">
+                <!-- Options will be dynamically inserted here -->
+            </div>
+            <div class="mt-8">
+                 <p id="error-message" class="text-red-400 text-center mb-4 h-6"></p>
+                <button id="next-btn" class="btn bg-blue-500 text-white font-bold py-3 px-6 rounded-lg w-full text-lg hover:bg-blue-600">
+                    Next Question
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Page -->
+        <div id="result-page" class="page card text-center p-8 md:p-12 rounded-2xl shadow-2xl">
+            <h1 class="text-4xl font-bold text-white mb-2">Quiz Completed!</h1>
+            <p class="text-lg text-slate-300 mb-6">Here's your final score:</p>
+            
+            <div class="relative w-48 h-48 mx-auto mb-8">
+                <svg class="w-full h-full" viewBox="0 0 100 100">
+                    <circle class="text-slate-700" stroke-width="10" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                    <circle id="score-circle" class="text-blue-400" stroke-width="10" stroke-linecap="round" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50"
+                        stroke-dasharray="283" stroke-dashoffset="283" transform="rotate(-90 50 50)" />
+                </svg>
+                <div id="score-text" class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-white">0/10</div>
+            </div>
+
+            <div class="flex justify-center space-x-4">
+                <button id="review-btn" class="btn bg-slate-700 text-white font-bold py-3 px-6 rounded-lg">
+                    Review Answers
+                </button>
+                <button id="leaderboard-btn" class="btn bg-slate-700 text-white font-bold py-3 px-6 rounded-lg">
+                    Leaderboard
+                </button>
+                 <button id="restart-btn" class="btn bg-blue-500 text-white font-bold py-3 px-6 rounded-lg">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Page -->
+        <div id="leaderboard-page" class="page card p-8 md:p-10 rounded-2xl shadow-2xl">
+            <h1 class="text-4xl font-bold text-white mb-6 text-center">Top Scorers</h1>
+            <div id="leaderboard-list" class="space-y-4">
+                <!-- Leaderboard will be dynamically populated -->
+            </div>
+            <div class="text-center mt-8 space-x-4">
+                 <button id="clear-leaderboard-btn" class="btn bg-red-600 text-white font-bold py-3 px-6 rounded-lg">
+                    Clear Leaderboard
+                </button>
+                <button id="home-btn" class="btn bg-slate-700 text-white font-bold py-3 px-6 rounded-lg">
+                    Back to Home
+                </button>
+            </div>
+        </div>
+        
+        <!-- Review Page -->
+        <div id="review-page" class="page card p-8 md:p-10 rounded-2xl shadow-2xl">
+            <h1 class="text-4xl font-bold text-white mb-6 text-center">Review Answers</h1>
+            <div id="review-container" class="space-y-6">
+                <!-- Review content will be dynamically populated -->
+            </div>
+             <div class="text-center mt-8">
+                <button id="back-to-results-btn" class="btn bg-slate-700 text-white font-bold py-3 px-6 rounded-lg">
+                    Back to Results
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const quizData = {
+            "Science": [
+                { question: "Who is known as the 'Father of the Indian Space Program'?", options: ["C.V. Raman", "Homi J. Bhabha", "Vikram Sarabhai", "A.P.J. Abdul Kalam"], correct: "Vikram Sarabhai" },
+                { question: "India's first satellite, launched in 1975, was named after which astronomer?", options: ["Brahmagupta", "Varahamihira", "Aryabhata", "Bhaskara II"], correct: "Aryabhata" },
+                { question: "The phenomenon of 'Raman Effect' was discovered by which Indian physicist?", options: ["Jagdish Chandra Bose", "Satyendra Nath Bose", "C.V. Raman", "Meghnad Saha"], correct: "C.V. Raman" },
+                { question: "Which national park in India is famous for its one-horned rhinoceroses?", options: ["Jim Corbett National Park", "Kaziranga National Park", "Sundarbans National Park", "Gir National Park"], correct: "Kaziranga National Park" },
+                { question: "India's successful Mars Orbiter Mission is commonly known by what name?", options: ["Chandrayaan-1", "Aditya-L1", "Gaganyaan", "Mangalyaan"], correct: "Mangalyaan" },
+                { question: "The concept of 'zero' as a number is believed to have originated in which ancient civilization?", options: ["Roman", "Greek", "Egyptian", "Indian"], correct: "Indian" },
+                { question: "What is the national aquatic animal of India?", options: ["Gharial", "River Dolphin", "Saltwater Crocodile", "Blue Whale"], correct: "River Dolphin" },
+                { question: "Which is the highest dam in India?", options: ["Bhakra Dam", "Sardar Sarovar Dam", "Hirakud Dam", "Tehri Dam"], correct: "Tehri Dam" },
+                { question: "The Indian Space Research Organisation (ISRO) is headquartered in which city?", options: ["Mumbai", "Delhi", "Bengaluru", "Chennai"], correct: "Bengaluru" },
+                { question: "A.P.J. Abdul Kalam, former President of India, was primarily known for his work in which scientific field?", options: ["Medicine", "Aerospace Engineering", "Nuclear Physics", "Chemistry"], correct: "Aerospace Engineering" }
+            ],
+            "History": [
+                { question: "The Taj Mahal was built by which Mughal emperor?", options: ["Akbar", "Jahangir", "Shah Jahan", "Aurangzeb"], correct: "Shah Jahan" },
+                { question: "In which year did India gain independence from British rule?", options: ["1942", "1945", "1947", "1950"], correct: "1947" },
+                { question: "Who was the first Prime Minister of independent India?", options: ["Sardar Vallabhbhai Patel", "Jawaharlal Nehru", "Mahatma Gandhi", "B.R. Ambedkar"], correct: "Jawaharlal Nehru" },
+                { question: "The ancient city of Harappa is part of which civilization?", options: ["Mesopotamian", "Egyptian", "Indus Valley", "Chinese"], correct: "Indus Valley" },
+                { question: "The famous 'Dandi March' led by Mahatma Gandhi was a protest against what?", options: ["Salt Tax", "Land Revenue", "Indigo Planting", "Partition of Bengal"], correct: "Salt Tax" },
+                { question: "Who wrote the Indian National Anthem, 'Jana Gana Mana'?", options: ["Bankim Chandra Chatterjee", "Muhammad Iqbal", "Sarojini Naidu", "Rabindranath Tagore"], correct: "Rabindranath Tagore" },
+                { question: "Which Mauryan emperor is known for spreading Buddhism across Asia?", options: ["Chandragupta Maurya", "Bindusara", "Ashoka the Great", "Samudragupta"], correct: "Ashoka the Great" },
+                { question: "The Battle of Plassey in 1757 marked the beginning of which company's rule in India?", options: ["Dutch East India Company", "French East India Company", "British East India Company", "Portuguese East India Company"], correct: "British East India Company" },
+                { question: "Who is known as the 'Iron Man of India'?", options: ["Jawaharlal Nehru", "Subhas Chandra Bose", "Sardar Vallabhbhai Patel", "Lal Bahadur Shastri"], correct: "Sardar Vallabhbhai Patel" },
+                { question: "The Quit India Movement was launched in which year?", options: ["1930", "1942", "1945", "1921"], correct: "1942" }
+            ],
+            "General Knowledge": [
+                 { question: "What is the capital of India?", options: ["Mumbai", "Kolkata", "Chennai", "New Delhi"], correct: "New Delhi" },
+                 { question: "Which state is known as the 'Spice Garden of India'?", options: ["Karnataka", "Kerala", "Tamil Nadu", "Andhra Pradesh"], correct: "Kerala" },
+                 { question: "How many states are there in India (as of 2024)?", options: ["28", "29", "30", "27"], correct: "28" },
+                 { question: "What is the national flower of India?", options: ["Rose", "Lotus", "Marigold", "Jasmine"], correct: "Lotus" },
+                 { question: "The 'Gateway of India' is located in which city?", options: ["New Delhi", "Mumbai", "Chennai", "Kolkata"], correct: "Mumbai" },
+                 { question: "Which is the largest state in India by area?", options: ["Uttar Pradesh", "Maharashtra", "Rajasthan", "Madhya Pradesh"], correct: "Rajasthan" },
+                 { question: "Bharatanatyam is a classical dance form from which state?", options: ["Kerala", "Andhra Pradesh", "Karnataka", "Tamil Nadu"], correct: "Tamil Nadu" },
+                 { question: "Which is the highest civilian award in India?", options: ["Padma Vibhushan", "Bharat Ratna", "Padma Bhushan", "Padma Shri"], correct: "Bharat Ratna" },
+                 { question: "The festival of Diwali is also known as the festival of what?", options: ["Colors", "Lights", "Harvest", "Kites"], correct: "Lights" },
+                 { question: "What are the three colors of the Indian national flag, from top to bottom?", options: ["Green, White, Saffron", "Saffron, White, Green", "White, Saffron, Green", "Saffron, Green, White"], correct: "Saffron, White, Green" }
+            ]
+        };
+
+        const pages = document.querySelectorAll('.page');
+        const nameForm = document.getElementById('name-form');
+        const nameInput = document.getElementById('name-input');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const reviewBtn = document.getElementById('review-btn');
+        const backToResultsBtn = document.getElementById('back-to-results-btn');
+        const leaderboardBtn = document.getElementById('leaderboard-btn');
+        const clearLeaderboardBtn = document.getElementById('clear-leaderboard-btn');
+        const homeBtn = document.getElementById('home-btn');
+        
+        const questionNumberEl = document.getElementById('question-number');
+        const questionTextEl = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const scoreTextEl = document.getElementById('score-text');
+        const scoreCircle = document.getElementById('score-circle');
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const categoryContainer = document.getElementById('category-container');
+        const timerText = document.getElementById('timer-text');
+        const timerBar = document.getElementById('timer-bar');
+        const errorMessageEl = document.getElementById('error-message');
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedAnswer = null;
+        let playerName = "Anonymous";
+        let selectedCategory = "";
+        let currentQuizData = [];
+        let userAnswers = [];
+        let timerInterval;
+        const TIME_LIMIT = 15;
+
+        function showPage(pageId) {
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+        
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            userAnswers = [];
+            currentQuizData = quizData[selectedCategory];
+            showPage('quiz-page');
+            loadQuestion();
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            let timeLeft = TIME_LIMIT;
+            timerText.textContent = timeLeft;
+            timerBar.style.width = '100%';
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerText.textContent = timeLeft;
+                timerBar.style.width = `${(timeLeft / TIME_LIMIT) * 100}%`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleNext(true); // Auto-submit on timeout
+                }
+            }, 1000);
+        }
+
+        function loadQuestion() {
+            selectedAnswer = null;
+            resetTimer();
+            errorMessageEl.textContent = "";
+            const currentQuestion = currentQuizData[currentQuestionIndex];
+            questionNumberEl.textContent = `Question ${currentQuestionIndex + 1}/${currentQuizData.length}`;
+            questionTextEl.textContent = currentQuestion.question;
+            
+            optionsContainer.innerHTML = '';
+            
+            currentQuestion.options.forEach(optionText => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'quiz-option p-4 bg-slate-700/50 text-white rounded-lg cursor-pointer border-2 border-transparent';
+                optionElement.textContent = optionText;
+                optionsContainer.appendChild(optionElement);
+
+                optionElement.addEventListener('click', () => {
+                    document.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
+                    optionElement.classList.add('selected');
+                    selectedAnswer = optionText;
+                });
+            });
+
+            nextBtn.textContent = 'Next Question';
+            nextBtn.disabled = false;
+        }
+
+        function handleNext(fromTimeout = false) {
+            if (!fromTimeout && selectedAnswer === null) {
+                errorMessageEl.textContent = "Please select an option";
+                setTimeout(() => {
+                    errorMessageEl.textContent = "";
+                }, 2000);
+                return;
+            }
+
+            clearInterval(timerInterval);
+            userAnswers.push(selectedAnswer);
+
+            nextBtn.disabled = true;
+            const options = document.querySelectorAll('.quiz-option');
+            const correctAnswer = currentQuizData[currentQuestionIndex].correct;
+            
+            options.forEach(opt => {
+                opt.classList.add('disabled');
+                if (opt.textContent === correctAnswer) {
+                    opt.classList.add('correct');
+                    opt.insertAdjacentHTML('beforeend', '<i class="feedback-icon fa-solid fa-check text-green-400"></i>');
+                } else if (opt.textContent === selectedAnswer) {
+                    opt.classList.add('incorrect');
+                     opt.insertAdjacentHTML('beforeend', '<i class="feedback-icon fa-solid fa-times text-red-400"></i>');
+                }
+            });
+
+            if (selectedAnswer === correctAnswer) {
+                score++;
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < currentQuizData.length) {
+                    loadQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1500);
+        }
+        
+        function showResults() {
+            showPage('result-page');
+            const totalQuestions = currentQuizData.length;
+            scoreTextEl.textContent = `${score}/${totalQuestions}`;
+            
+            const radius = scoreCircle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (score / totalQuestions) * circumference;
+            
+            scoreCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+            scoreCircle.style.strokeDashoffset = circumference;
+            scoreCircle.getBoundingClientRect(); 
+            scoreCircle.style.transition = 'stroke-dashoffset 1.5s ease-in-out';
+            scoreCircle.style.strokeDashoffset = offset;
+
+            let scores = JSON.parse(localStorage.getItem('quizScores')) || [];
+            scores.push({ name: playerName, score: score, total: totalQuestions });
+            localStorage.setItem('quizScores', JSON.stringify(scores));
+        }
+
+        function showReview() {
+            const reviewContainer = document.getElementById('review-container');
+            reviewContainer.innerHTML = '';
+
+            currentQuizData.forEach((question, index) => {
+                const userAnswer = userAnswers[index];
+                const isCorrect = userAnswer === question.correct;
+
+                const questionWrapper = document.createElement('div');
+                questionWrapper.className = 'p-4 rounded-lg bg-slate-700/50';
+
+                let optionsHtml = '';
+                question.options.forEach(option => {
+                    let optionClass = 'quiz-option p-3 my-2 rounded-lg bg-slate-600/50';
+                    if (option === question.correct) {
+                        optionClass += ' correct';
+                    }
+                    if (option === userAnswer && !isCorrect) {
+                        optionClass += ' incorrect';
+                    }
+                    optionsHtml += `<div class="${optionClass}">${option}</div>`;
+                });
+
+                questionWrapper.innerHTML = `
+                    <p class="text-xl font-bold text-white mb-3">${index + 1}. ${question.question}</p>
+                    ${optionsHtml}
+                    <p class="mt-3 text-sm text-slate-400">Your answer: <span class="font-semibold ${isCorrect ? 'text-green-400' : 'text-red-400'}">${userAnswer || 'Not Answered'}</span></p>
+                `;
+                reviewContainer.appendChild(questionWrapper);
+            });
+            showPage('review-page');
+        }
+
+        function updateLeaderboard() {
+            leaderboardList.innerHTML = ''; 
+
+            const realScores = JSON.parse(localStorage.getItem('quizScores')) || [];
+            
+            realScores.sort((a, b) => b.score - a.score);
+
+            const medals = ['🥇', '🥈', '🥉'];
+            const medalColors = [
+                'bg-yellow-400/20 border-yellow-400 text-yellow-300',
+                'bg-gray-400/20 border-gray-400 text-gray-300',
+                'bg-yellow-600/20 border-yellow-600 text-yellow-500'
+            ];
+
+            if (realScores.length === 0) {
+                 leaderboardList.innerHTML = `<p class="text-center text-slate-400">No scores yet. Be the first to play!</p>`;
+                 return;
+            }
+
+            realScores.slice(0, 5).forEach((scorer, index) => {
+                const scoreEl = document.createElement('div');
+                const medal = medals[index] ? `<span class="text-3xl mr-4">${medals[index]}</span>` : `<span class="text-3xl mr-4 w-8 text-center">${index + 1}</span>`;
+                const colorClass = medalColors[index] || 'bg-slate-700/50 border-slate-600';
+                
+                scoreEl.className = `flex items-center justify-between p-4 rounded-lg border-2 ${colorClass}`;
+                scoreEl.innerHTML = `
+                    <div class="flex items-center">
+                        ${medal}
+                        <span class="text-xl font-bold">${scorer.name}</span>
+                    </div>
+                    <span class="text-xl font-bold">${scorer.score}/${scorer.total}</span>
+                `;
+                leaderboardList.appendChild(scoreEl);
+            });
+        }
+
+        function populateCategories() {
+            for(const category in quizData) {
+                const categoryBtn = document.createElement('button');
+                categoryBtn.className = 'btn bg-slate-700 text-white font-bold py-4 px-6 rounded-lg text-lg hover:bg-slate-600';
+                categoryBtn.textContent = category;
+                categoryBtn.addEventListener('click', () => {
+                    selectedCategory = category;
+                    startQuiz();
+                });
+                categoryContainer.appendChild(categoryBtn);
+            }
+        }
+        
+        populateCategories();
+
+        nameForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const enteredName = nameInput.value;
+            if (enteredName.trim() !== "") playerName = enteredName;
+            showPage('category-page');
+        });
+        
+        nextBtn.addEventListener('click', () => handleNext(false));
+        restartBtn.addEventListener('click', () => showPage('category-page'));
+        reviewBtn.addEventListener('click', showReview);
+        backToResultsBtn.addEventListener('click', () => showPage('result-page'));
+        
+        leaderboardBtn.addEventListener('click', () => {
+            updateLeaderboard();
+            showPage('leaderboard-page');
+        });
+        
+        clearLeaderboardBtn.addEventListener('click', () => {
+            if (confirm("Are you sure you want to clear the leaderboard?")) {
+                localStorage.removeItem('quizScores');
+                updateLeaderboard();
+            }
+        });
+
+        homeBtn.addEventListener('click', () => showPage('welcome-page'));
+    </script>
+</body>
+</html>
